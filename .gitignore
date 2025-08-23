@@ -39,3 +39,9 @@ luac.out
 *.x86_64
 *.hex
 
+# demo videos
+**/*.mp4
+demo/
+
+**/.DS_Store
+**/*.log
