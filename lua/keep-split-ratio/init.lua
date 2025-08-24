@@ -35,27 +35,43 @@ local function any_leaf_fixed(node)
     return false
 end
 
--- Collect top-level "columns" (children of a root 'row') each represented by a leaf winid, its current width, and whether any window in that column is winfixwidth
+-- Collect vertical splits at any level, tracking their widths and fixed status
 local function collect_columns()
     local layout = vim.fn.winlayout()
     local cols = {}
-    if layout[1] ~= "row" then
-        -- No side-by-side splits- treat whole layout as one column
+
+    local function traverse(node)
+        local t = node[1]
+        if t == "leaf" then
+            return
+        elseif t == "row" then
+            -- Found vertical splits - collect each child as a column
+            for _, child in ipairs(node[2]) do
+                local win = first_leaf(child)
+                if win then
+                    local width = vim.api.nvim_win_get_width(win)
+                    local fixed = any_leaf_fixed(child)
+                    table.insert(cols, { win = win, width = width, fixed = fixed })
+                end
+            end
+        else
+            -- t == "col", traverse children to find row splits
+            for _, child in ipairs(node[2]) do
+                traverse(child)
+            end
+        end
+    end
+
+    traverse(layout)
+
+    -- If no row splits found, treat whole layout as one column
+    if #cols == 0 then
         local win = first_leaf(layout)
         if win then
             table.insert(cols, { win = win, width = vim.api.nvim_win_get_width(win), fixed = any_leaf_fixed(layout) })
         end
-        return cols
     end
 
-    for _, child in ipairs(layout[2]) do
-        local win = first_leaf(child)
-        if win then
-            local width = vim.api.nvim_win_get_width(win)
-            local fixed = any_leaf_fixed(child)
-            table.insert(cols, { win = win, width = width, fixed = fixed })
-        end
-    end
     return cols
 end
 
